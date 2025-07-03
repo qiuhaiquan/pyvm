@@ -17,9 +17,6 @@
    git clone https://github.com/yourusername/pyvm.git
    ```
 2. 安装依赖（无需额外依赖）：
-   ```
-   pip install -r requirements.txt
-   ```
 
 3. 安装项目：
    ```
