@@ -30,6 +30,7 @@ class PyVMGUI:
         # 当前文件路径
         self.current_file = None
         self.current_pyc = None
+        self.custom_module_paths = []
 
         # 创建UI
         self._create_menu()
@@ -61,6 +62,11 @@ class PyVMGUI:
         execute_menu.add_command(label="打开并执行pyc", command=self._open_and_execute_pyc)
         menubar.add_cascade(label="执行", menu=execute_menu)
 
+        # 设置菜单
+        settings_menu = tk.Menu(menubar, tearoff=0)
+        settings_menu.add_command(label="设置自定义模块搜索路径", command=self._set_custom_module_paths)
+        menubar.add_cascade(label="设置", menu=settings_menu)
+
         # 帮助菜单
         help_menu = tk.Menu(menubar, tearoff=0)
         help_menu.add_command(label="关于", command=self._show_about)
@@ -78,6 +84,13 @@ class PyVMGUI:
         self.root.bind("<F5>", lambda event: self._compile_current_file())
         self.root.bind("<F6>", lambda event: self._compile_and_execute())
         self.root.bind("<F9>", lambda event: self._execute_current_pyc())
+
+    def _set_custom_module_paths(self):
+        paths = filedialog.askdirectory(multiple=True)
+        if paths:
+            self.custom_module_paths = list(paths)
+            self.interpreter = PyInterpreter(self.custom_module_paths)
+            messagebox.showinfo("设置成功", f"已设置自定义模块搜索路径: {', '.join(self.custom_module_paths)}")
 
     def _create_main_frame(self):
         """创建主框架（修改后）"""

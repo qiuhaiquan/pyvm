@@ -6,6 +6,7 @@ from pyvm.core.interpreter import PyInterpreter
 import tkinter as tk
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
+
 def main():
     parser = argparse.ArgumentParser(description='Python虚拟机 - 编译和执行Python代码')
     subparsers = parser.add_subparsers(dest='command', required=True)
@@ -19,7 +20,6 @@ def main():
     execute_parser = subparsers.add_parser('execute', help='执行pyc文件')
     execute_parser.add_argument('pyc_file', help='pyc文件路径')
     execute_parser.add_argument('--path', action='append', help='添加模块搜索路径')
-    execute_parser.add_argument('args', nargs='*', help='传递给pyc文件的命令行参数')
 
     # 图形界面命令
     gui_parser = subparsers.add_parser('gui', help='启动图形界面')
@@ -37,7 +37,7 @@ def main():
         # 执行命令
         module_search_paths = args.path or []
         interpreter = PyInterpreter(module_search_paths)
-        interpreter.execute_pyc(args.pyc_file, args.args)
+        interpreter.execute_pyc(args.pyc_file)
 
     if args.command == 'gui':
         from pyvm.gui.main_window import PyVMGUI
@@ -45,6 +45,13 @@ def main():
         app = PyVMGUI(root)
         root.mainloop()
 
+
+    else:
+        # 图形界面命令
+        from pyvm.gui.main_window import PyVMGUI
+        root = tk.Tk()
+        app = PyVMGUI(root)
+        root.mainloop()
 
 if __name__ == "__main__":
     main()
