@@ -14,7 +14,11 @@
 
 1. 克隆仓库：
    ```
+<<<<<<< HEAD
    git clone https://github.com/yourusername/pyvm.git
+=======
+   git clone https://github.com/qiuhaiquan/pyvm.git
+>>>>>>> 61ca27a (初始化提交)
    cd pyvm
    ```
 
