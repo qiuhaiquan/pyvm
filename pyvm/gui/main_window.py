@@ -191,4 +191,8 @@ class PyVMGUI:
     
     def _update_status(self, text):
         """更新状态标签"""
-        self.status_label.config(text=text)    
+        self.status_label.config(text=text)
+
+
+def main():
+    pass

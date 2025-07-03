@@ -11,17 +11,11 @@
 - 支持中文显示
 
 ## 安装
-
+   
 1. 克隆仓库：
    ```
-<<<<<<< HEAD
    git clone https://github.com/yourusername/pyvm.git
-=======
-   git clone https://github.com/qiuhaiquan/pyvm.git
->>>>>>> 61ca27a (初始化提交)
-   cd pyvm
    ```
-
 2. 安装依赖（无需额外依赖）：
    ```
    pip install -r requirements.txt
@@ -35,7 +29,9 @@
 ## 使用方法
 
 ### 图形界面
-python -m pyvm
+```
+python -m pyvm gui
+```
 ### 命令行工具
 
 1. 编译Python文件：
