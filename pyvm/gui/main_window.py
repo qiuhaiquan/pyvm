@@ -194,5 +194,3 @@ class PyVMGUI:
         self.status_label.config(text=text)
 
 
-def main():
-    pass

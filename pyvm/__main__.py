@@ -3,6 +3,7 @@ import argparse
 from pathlib import Path
 from pyvm.core.compiler import PyCompiler
 from pyvm.core.interpreter import PyInterpreter
+import tkinter as tk
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 
@@ -39,14 +40,18 @@ def main():
         interpreter.execute_pyc(args.pyc_file)
 
     if args.command == 'gui':
-        from pyvm.gui.main_window import main
-        main()
+        from pyvm.gui.main_window import PyVMGUI
+        root = tk.Tk()
+        app = PyVMGUI(root)
+        root.mainloop()
 
 
     else:
         # 图形界面命令
-        from pyvm.gui.main_window import main
-        main()
+        from pyvm.gui.main_window import PyVMGUI
+        root = tk.Tk()
+        app = PyVMGUI(root)
+        root.mainloop()
 
 if __name__ == "__main__":
     main()    
