@@ -10,6 +10,7 @@ import importlib.util
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
+
 class PyInterpreter:
     def __init__(self, module_paths=None):
         self.globals = {
@@ -57,12 +58,9 @@ class PyInterpreter:
         for name, obj in safe_builtins.items():
             setattr(self.globals['__builtins__'], name, obj)
 
-    def execute_code_object(self, code_object, args=None):
+    def execute_code_object(self, code_object):
         """执行Python代码对象并返回结果"""
         try:
-            # 将命令行参数传递给代码执行环境
-            if args is not None:
-                self.globals['__args__'] = args
             # 使用初始化时设置的安全全局命名空间
             exec(code_object, self.globals)
 
@@ -71,7 +69,7 @@ class PyInterpreter:
         except Exception as e:
             raise RuntimeError(f"执行代码对象失败: {str(e)}") from e
 
-    def execute_pyc(self, pyc_path, args=None):
+    def execute_pyc(self, pyc_path):
         """执行pyc文件并返回结果"""
         if not os.path.exists(pyc_path):
             raise FileNotFoundError(f"pyc文件不存在: {pyc_path}")
@@ -99,6 +97,7 @@ class PyInterpreter:
 
         # 使用安全的全局命名空间执行代码
         try:
-            return self.execute_code_object(code_object, args)
+            exec(code_object, self.globals)
+            return self.globals.get('__result__', None)
         except Exception as e:
             raise RuntimeError(f"执行pyc文件失败: {str(e)}") from e

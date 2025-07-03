@@ -136,7 +136,7 @@ class PyVMGUI:
         # 添加滚动条
         scrollbar = ttk.Scrollbar(file_frame, orient=tk.VERTICAL, command=self.file_list.yview)
         scrollbar.pack(fill=tk.Y, side=tk.RIGHT)
-        self.file_list.configure(yscrollcommand=scrollbar.set)  # 修改此处，修正意外实参问题
+        self.file_list.configure(yscrollcommand=scrollbar.set)
 
         # 设置文件列表列
         self.file_list["columns"] = ("size", "modified")
@@ -231,180 +231,134 @@ class PyVMGUI:
     def _update_output(self, text):
         """更新输出显示"""
         self.output_display.config(state=tk.NORMAL)
-        self.output_display.delete(1.0, tk.END)
-        self.output_display.insert(tk.END, text)
+        self.output_display.insert(tk.END, text + '\n')
+        self.output_display.see(tk.END)
         self.output_display.config(state=tk.DISABLED)
 
-    def _update_status(self, text):
-        """更新状态标签"""
-        self.status_label.config(text=text)
-
     def _new_file(self):
-        """创建新文件"""
-        if self._check_unsaved_changes():
-            self.code_editor.delete(1.0, tk.END)  # 修改此处，使用正确的编辑器对象
-            self.current_file = None
-            self.root.title("Python VM Editor")
+        """新建文件"""
+        self.code_editor.delete(1.0, tk.END)
+        self.current_file = None
+        self._update_status("新建文件")
+        self.security_status.config(text="安全检查: 未检查", foreground="orange")
+        self._update_security_status(True)
 
-    def _open_file(self, event=None):
-        """打开文件对话框"""
-        if self._check_unsaved_changes():
-            file_path = filedialog.askopenfilename(
-                defaultextension=".py",
-                filetypes=[("Python Files", "*.py"), ("All Files", "*.*")]
-            )
-            if file_path:
-                self._load_file(file_path)
-
-    def _load_file(self, file_path):
-        """加载文件内容到编辑器"""
-        try:
-            with open(file_path, "r", encoding="utf-8") as file:
-                content = file.read()
-            self.code_editor.delete(1.0, tk.END)  # 修改此处，使用正确的编辑器对象
-            self.code_editor.insert(tk.END, content)
-            self.current_file = file_path
-            self.root.title(f"Python VM Editor - {os.path.basename(file_path)}")
-        except Exception as e:
-            messagebox.showerror("错误", f"无法打开文件: {str(e)}")
-
-    def _save_file(self, event=None):
-        """保存当前文件"""
-        if self.current_file:
-            self._save_file_as(self.current_file)
-            return True
-        return self._save_file_as()
-
-    def _save_file_as(self, file_path=None):
-        """另存为新文件"""
-        if not file_path:
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".py",
-                filetypes=[("Python Files", "*.py"), ("All Files", "*.*")]
-            )
+    def _open_file(self):
+        """打开文件"""
+        file_path = filedialog.askopenfilename(filetypes=[("Python Files", "*.py")])
         if file_path:
+            self.current_file = file_path
             try:
-                content = self.code_editor.get(1.0, tk.END)  # 修改此处，使用正确的编辑器对象
-                with open(file_path, "w", encoding="utf-8") as file:
-                    file.write(content)
-                self.current_file = file_path
-                self.root.title(f"Python VM Editor - {os.path.basename(file_path)}")
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    code = f.read()
+                self.code_editor.delete(1.0, tk.END)
+                self.code_editor.insert(tk.END, code)
+                self._update_status(f"打开文件: {os.path.basename(file_path)}")
+                self.security_status.config(text="安全检查: 未检查", foreground="orange")
+                self._update_security_status(True)
+                self._refresh_file_list()
+            except Exception as e:
+                self._update_output(f"打开文件出错: {str(e)}")
+                self._update_status("打开文件失败")
+
+    def _save_file(self):
+        """保存文件"""
+        if self.current_file:
+            try:
+                code = self.code_editor.get(1.0, tk.END)
+                with open(self.current_file, 'w', encoding='utf-8') as f:
+                    f.write(code)
+                self._update_status(f"保存文件: {os.path.basename(self.current_file)}")
+                self._refresh_file_list()
                 return True
             except Exception as e:
-                messagebox.showerror("错误", f"无法保存文件: {str(e)}")
+                self._update_output(f"保存文件出错: {str(e)}")
+                self._update_status("保存文件失败")
+                return False
+        else:
+            return self._save_file_as()
+
+    def _save_file_as(self):
+        """另存为文件"""
+        file_path = filedialog.asksaveasfilename(defaultextension=".py", filetypes=[("Python Files", "*.py")])
+        if file_path:
+            self.current_file = file_path
+            try:
+                code = self.code_editor.get(1.0, tk.END)
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(code)
+                self._update_status(f"另存为: {os.path.basename(file_path)}")
+                self._refresh_file_list()
+                return True
+            except Exception as e:
+                self._update_output(f"另存为出错: {str(e)}")
+                self._update_status("另存为失败")
+                return False
         return False
 
-    def _check_unsaved_changes(self):
-        """检查是否有未保存的更改"""
-        if self.code_editor.edit_modified():  # 修改此处，使用正确的编辑器对象
-            response = messagebox.askyesnocancel(
-                "保存", "是否保存更改?"
-            )
-            if response is None:  # 用户点击了取消
-                return False
-            if response:  # 用户点击了是
-                return self._save_file()
-        return True
-
-    def _compile_and_execute(self, event=None):
-        """编译当前文件并执行生成的pyc"""
-        if not self.current_file:
-            if not self._save_file():
-                return
-
-        try:
-            # 编译文件
-            pyc_path = self.compiler.compile_file(self.current_file)
-            self.current_pyc = pyc_path
-
-            # 更新输出面板
-            self._update_output(f"编译成功!\n生成的pyc文件: {pyc_path}\n\n正在执行...")
-
-            # 执行pyc文件
-            result = self.interpreter.execute_pyc(pyc_path)
-            self._update_output(f"执行完成\n输出结果:\n{result}")
-
-            # 更新状态
-            self._update_status(f"编译并执行完成: {os.path.basename(pyc_path)}")  # 修改此处，使用正确的状态更新方法
-        except Exception as e:
-            self._update_output(f"错误: {str(e)}")
-            self._update_status("编译并执行失败")  # 修改此处，使用正确的状态更新方法
-            messagebox.showerror("执行错误", str(e))
-
-    def _refresh_file_list(self):
-        """刷新文件列表"""
-        self.file_list.delete(*self.file_list.get_children())
-        try:
-            # 获取当前目录下的所有.py和.pyc文件
-            for file in os.listdir(os.getcwd()):
-                if file.endswith(".py") or file.endswith(".pyc"):
-                    file_path = os.path.join(os.getcwd(), file)
-                    size = os.path.getsize(file_path)
-                    modified = time.ctime(os.path.getmtime(file_path))
-                    self.file_list.insert("", "end", text=file, values=(size, modified))
-        except Exception as e:
-            self._update_output(f"无法加载文件列表: {str(e)}")
-
-    def _on_file_double_click(self, event):
-        """处理文件双击事件"""
-        item = self.file_list.selection()
-        if not item:
-            return
-
-        file_name = self.file_list.item(item, "text")
-        file_path = os.path.join(os.getcwd(), file_name)
-
-        if file_name.endswith(".py"):
-            # 打开Python文件进行编辑
-            self._load_file(file_path)
-        elif file_name.endswith(".pyc"):
-            # 执行pyc文件
-            self.current_pyc = file_path
+    def _compile_and_execute(self):
+        """编译并执行"""
+        if self._compile_current_file():
             self._execute_current_pyc()
 
     def _open_and_execute_pyc(self):
         """打开并执行pyc文件"""
-        file_path = filedialog.askopenfilename(
-            defaultextension=".pyc",
-            filetypes=[("Python字节码文件", "*.pyc"), ("All Files", "*.*")]
-        )
-
+        file_path = filedialog.askopenfilename(filetypes=[("Compiled Python Files", "*.pyc")])
         if file_path:
             self.current_pyc = file_path
             self._execute_current_pyc()
 
     def _show_about(self):
-        """显示关于对话框"""
-        messagebox.showinfo(
-            "关于",
-            "Python VM 编辑器 v1.0\n\n"
-            "一个简单的Python虚拟机实现，支持编译和执行Python代码。\n\n"
-            "© 2025 开发者"
-        )
+        """显示关于信息"""
+        messagebox.showinfo("关于", "Python虚拟机\n这是一个简单的Python虚拟机实现，支持将Python代码编译为pyc文件并执行，同时提供图形界面和命令行工具。")
 
     def _show_help(self):
-        """显示使用帮助"""
+        """显示使用说明"""
         help_text = """
-使用说明:
+使用说明：
+1. 文件操作：
+   - 新建：创建一个新的Python文件。
+   - 打开：打开一个已有的Python文件。
+   - 保存：保存当前编辑的Python文件。
+   - 另存为：将当前编辑的Python文件另存为其他文件。
+   - 退出：关闭程序。
 
-1. 文件操作:
-   - 新建: Ctrl+N
-   - 打开: Ctrl+O
-   - 保存: Ctrl+S
-   - 另存为: Ctrl+Shift+S
-   - 退出: Ctrl+Q
+2. 编译操作：
+   - 编译当前文件：将当前编辑的Python文件编译为pyc文件。
+   - 编译并执行：编译当前文件并执行生成的pyc文件。
 
-2. 编译操作:
-   - 编译当前文件: F5
-   - 编译并执行: F6
+3. 执行操作：
+   - 执行当前pyc：执行当前已编译的pyc文件。
+   - 打开并执行pyc：打开一个pyc文件并执行。
 
-3. 执行操作:
-   - 执行当前pyc: F9
-   - 打开并执行pyc: 菜单项
-
-4. 界面:
-   - 左侧: 文件浏览器
-   - 中间: 代码编辑器
-   - 底部: 输出结果
+4. 安全检查：
+   在编译前会进行代码安全检查，若发现潜在危险会提示。
         """
-        messagebox.showinfo("使用帮助", help_text)
+        messagebox.showinfo("使用说明", help_text)
+
+    def _refresh_file_list(self):
+        """刷新文件列表"""
+        for i in self.file_list.get_children():
+            self.file_list.delete(i)
+        if self.current_file:
+            file_dir = os.path.dirname(self.current_file)
+            for root, dirs, files in os.walk(file_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    file_size = os.path.getsize(file_path)
+                    modified_time = time.ctime(os.path.getmtime(file_path))
+                    self.file_list.insert("", "end", text=file, values=(file_size, modified_time))
+
+    def _on_file_double_click(self, event):
+        """文件双击事件"""
+        item = self.file_list.selection()[0]
+        file_name = self.file_list.item(item, "text")
+        if self.current_file:
+            file_dir = os.path.dirname(self.current_file)
+            file_path = os.path.join(file_dir, file_name)
+            if file_path.endswith('.py'):
+                self._open_file()
+
+    def _update_status(self, text):
+        """更新状态栏逻辑"""
+        self.status_label.config(text=text)
