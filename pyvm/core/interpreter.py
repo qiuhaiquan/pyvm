@@ -26,13 +26,19 @@ class PyInterpreter:
         
         # 添加安全限制的内置函数
         self._setup_safe_builtins()
-    
+
     def _setup_safe_builtins(self):
-        """设置安全的内置函数，限制危险操作"""
+        """设置安全的内置函数，兼容__builtins__为字典或模块的情况"""
         safe_builtins = {}
-        
-        # 复制原始内置函数
-        for name, obj in __builtins__.__dict__.items():
+
+    # 兼容__builtins__为字典或模块的情况
+        if isinstance(__builtins__, dict):
+            builtins_dict = __builtins__
+        else:
+            builtins_dict = vars(__builtins__)  # 获取模块的__dict__
+
+    # 复制原始内置函数
+        for name, obj in builtins_dict.items():
             # 过滤危险函数
             if name in ['eval', 'exec', 'open']:
                 continue
