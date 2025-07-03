@@ -5,6 +5,8 @@ import os
 import importlib.util
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
+import py_compile
+import tempfile
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 class PyCompiler:
@@ -40,7 +42,40 @@ class PyCompiler:
         self._write_pyc_file(output_path, code_object)
         
         return output_path
-    
+
+    def compile_string(self, source_code, pyc_path):
+        """将字符串形式的源代码编译为pyc文件"""
+        try:
+            # 确保输出目录存在
+            os.makedirs(os.path.dirname(pyc_path), exist_ok=True)
+
+            # 创建临时文件
+            with tempfile.NamedTemporaryFile(
+                    mode='w',
+                    suffix='.py',
+                    delete=False,
+                    encoding='utf-8'
+            ) as temp_file:
+                # 将源代码写入临时文件
+                temp_file.write(source_code)
+                temp_path = temp_file.name
+
+            # 使用py_compile编译临时文件
+            py_compile.compile(
+                temp_path,
+                cfile=pyc_path,
+                doraise=True
+            )
+
+            # 清理临时文件
+            os.unlink(temp_path)
+
+        except Exception as e:
+            # 发生错误时清理临时文件
+            if 'temp_path' in locals() and os.path.exists(temp_path):
+                os.unlink(temp_path)
+            raise RuntimeError(f"字符串编译失败: {str(e)}") from e
+
     def _analyze_imports(self, source_code: str) -> None:
         """分析源代码中导入的模块"""
         try:
