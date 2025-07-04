@@ -1,80 +1,60 @@
+import os
+import sys
 import ast
 import marshal
-import sys
-import os
 import importlib.util
-from pathlib import Path
-from typing import List, Optional, Set, Tuple
-import py_compile
 import tempfile
-sys.path.append(str(Path(__file__).resolve().parent.parent))
+from typing import Set, Optional
+from modulefinder import ModuleFinder
+import zipapp
 
 class PyCompiler:
     def __init__(self):
         self.imported_modules: Set[str] = set()
-    
+
     def compile_file(self, source_path: str, output_path: Optional[str] = None) -> str:
-        """编译Python源文件为pyc文件"""
-        with open(source_path, 'r', encoding='utf-8') as f:
-            source_code = f.read()
-        
-        # 分析导入的模块
-        self._analyze_imports(source_code)
-        
-        # 编译源代码为代码对象
-        code_object = compile(source_code, source_path, 'exec')
-        
+        """编译Python源文件为pyc文件，使用modulefinder分析依赖并使用zipapp打包"""
+        # 使用modulefinder分析依赖
+        finder = ModuleFinder()
+        finder.run_script(source_path)
+
+        # 创建临时目录
+        temp_dir = tempfile.mkdtemp()
+
+        # 复制必要的模块到临时目录
+        for name, mod in finder.modules.items():
+            if mod.__file__:
+                module_dir = os.path.join(temp_dir, *name.split('.'))
+                os.makedirs(os.path.dirname(module_dir), exist_ok=True)
+                if os.path.isfile(mod.__file__):
+                    with open(mod.__file__, 'rb') as src, open(module_dir + '.py', 'wb') as dst:
+                        dst.write(src.read())
+
+        # 复制主程序文件到临时目录
+        main_file_name = os.path.basename(source_path)
+        main_file_path = os.path.join(temp_dir, main_file_name)
+        with open(source_path, 'rb') as src, open(main_file_path, 'wb') as dst:
+            dst.write(src.read())
+
         # 如果未指定输出路径，生成默认输出路径
         if output_path is None:
             source_dir = os.path.dirname(source_path)
             source_name = os.path.basename(source_path)
             module_name = os.path.splitext(source_name)[0]
-            pycache_dir = os.path.join(source_dir, '__pycache__')
-            
-            # 确保__pycache__目录存在
-            os.makedirs(pycache_dir, exist_ok=True)
-            
-            # 生成pyc文件名，包含Python版本信息
-            python_version = f"{sys.version_info.major}{sys.version_info.minor}"
-            output_path = os.path.join(pycache_dir, f"{module_name}.cpython-{python_version}.pyc")
-        
-        # 写入pyc文件
-        self._write_pyc_file(output_path, code_object)
-        
+            output_path = os.path.join(source_dir, f"{module_name}.pyz")
+
+        # 检查源目录是否有 __main__.py
+        has_main_py = os.path.exists(os.path.join(temp_dir, '__main__.py'))
+        main_entry = f"{os.path.splitext(main_file_name)[0]}:main" if not has_main_py and hasattr(sys.modules['__main__'], 'main') else None
+
+        # 使用zipapp打包临时目录
+        zipapp.create_archive(temp_dir, output_path, main=main_entry)
+
+        # 清理临时目录
+        import shutil
+        shutil.rmtree(temp_dir)
+
         return output_path
-
-    def compile_string(self, source_code, pyc_path):
-        """将字符串形式的源代码编译为pyc文件"""
-        try:
-            # 确保输出目录存在
-            os.makedirs(os.path.dirname(pyc_path), exist_ok=True)
-
-            # 创建临时文件
-            with tempfile.NamedTemporaryFile(
-                    mode='w',
-                    suffix='.py',
-                    delete=False,
-                    encoding='utf-8'
-            ) as temp_file:
-                # 将源代码写入临时文件
-                temp_file.write(source_code)
-                temp_path = temp_file.name
-
-            # 使用py_compile编译临时文件
-            py_compile.compile(
-                temp_path,
-                cfile=pyc_path,
-                doraise=True
-            )
-
-            # 清理临时文件
-            os.unlink(temp_path)
-
-        except Exception as e:
-            # 发生错误时清理临时文件
-            if 'temp_path' in locals() and os.path.exists(temp_path):
-                os.unlink(temp_path)
-            raise RuntimeError(f"字符串编译失败: {str(e)}") from e
 
     def _analyze_imports(self, source_code: str) -> None:
         """分析源代码中导入的模块"""
@@ -90,37 +70,37 @@ class PyCompiler:
         except SyntaxError:
             # 如果语法错误，无法分析导入
             pass
-    
+
     def _write_pyc_file(self, output_path: str, code_object) -> None:
         """写入pyc文件，包含正确的文件头"""
         import time
         import struct
-        
+
         # 获取Python版本魔数
         magic = importlib.util.MAGIC_NUMBER
-        
+
         # 创建时间戳（当前时间）
         timestamp = int(time.time())
-        
+
         # 创建源文件大小（0表示未知）
         source_size = 0
-        
+
         with open(output_path, 'wb') as f:
             # 写入魔数
             f.write(magic)
-            
+
             # 写入空字节（在Python 3.7+中用于字节顺序标记）
             f.write(b'\r\n\0\0')
-            
+
             # 写入时间戳（4字节整数）
             f.write(struct.pack('<I', timestamp))
-            
+
             # 写入源文件大小（4字节整数，Python 3.2+）
             f.write(struct.pack('<I', source_size))
-            
+
             # 写入编译后的代码对象
             marshal.dump(code_object, f)
-    
+
     def get_imported_modules(self) -> Set[str]:
         """获取分析到的导入模块"""
-        return self.imported_modules    
+        return self.imported_modules
