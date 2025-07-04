@@ -64,7 +64,7 @@ class PyVMGUI:
 
         # 设置菜单
         settings_menu = tk.Menu(menubar, tearoff=0)
-        settings_menu.add_command(label="设置自定义模块搜索路径", command=self._set_custom_module_paths)
+        settings_menu.add_command(label="设置自定义库路径", command=self._set_custom_module_paths)
         menubar.add_cascade(label="设置", menu=settings_menu)
 
         # 帮助菜单
@@ -86,11 +86,12 @@ class PyVMGUI:
         self.root.bind("<F9>", lambda event: self._execute_current_pyc())
 
     def _set_custom_module_paths(self):
-        paths = filedialog.askdirectory(multiple=True)
-        if paths:
-            self.custom_module_paths = list(paths)
-            self.interpreter = PyInterpreter(self.custom_module_paths)
-            messagebox.showinfo("设置成功", f"已设置自定义模块搜索路径: {', '.join(self.custom_module_paths)}")
+        path = filedialog.askdirectory()
+        if path:
+            if path not in self.custom_module_paths:
+                self.custom_module_paths.append(path)
+                self.interpreter = PyInterpreter(module_paths=self.custom_module_paths)
+                messagebox.showinfo("提示", f"已添加自定义库路径: {path}")
 
     def _create_main_frame(self):
         """创建主框架（修改后）"""
