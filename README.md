@@ -21,6 +21,7 @@
 3. 安装项目：
    ```
    python setup.py install
+   或者双击setup.exe
    ```
 
 ## 使用方法
