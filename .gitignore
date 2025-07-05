@@ -2,4 +2,7 @@
 .venv/__pycache__/
 *.py[cod]
 .tests/
+<<<<<<< HEAD
 *.spec
+=======
+>>>>>>> 438996742cd91ad3d0f98eed88b8a4f93e4a10a9
