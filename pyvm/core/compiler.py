@@ -3,56 +3,35 @@ import sys
 import ast
 import marshal
 import importlib.util
-import tempfile
-from typing import Set, Optional
-from modulefinder import ModuleFinder
-import zipapp
+import time
+import struct
+from typing import Optional
+
 
 class PyCompiler:
     def __init__(self):
-        self.imported_modules: Set[str] = set()
+        self.imported_modules = set()
 
     def compile_file(self, source_path: str, output_path: Optional[str] = None) -> str:
-        """编译Python源文件为pyc文件，使用modulefinder分析依赖并使用zipapp打包"""
-        # 使用modulefinder分析依赖
-        finder = ModuleFinder()
-        finder.run_script(source_path)
+        """编译Python源文件为pyc文件"""
+        with open(source_path, 'r', encoding='utf-8') as f:
+            source_code = f.read()
 
-        # 创建临时目录
-        temp_dir = tempfile.mkdtemp()
+        # 分析导入的模块
+        self._analyze_imports(source_code)
 
-        # 复制必要的模块到临时目录
-        for name, mod in finder.modules.items():
-            if mod.__file__:
-                module_dir = os.path.join(temp_dir, *name.split('.'))
-                os.makedirs(os.path.dirname(module_dir), exist_ok=True)
-                if os.path.isfile(mod.__file__):
-                    with open(mod.__file__, 'rb') as src, open(module_dir + '.py', 'wb') as dst:
-                        dst.write(src.read())
-
-        # 复制主程序文件到临时目录
-        main_file_name = os.path.basename(source_path)
-        main_file_path = os.path.join(temp_dir, main_file_name)
-        with open(source_path, 'rb') as src, open(main_file_path, 'wb') as dst:
-            dst.write(src.read())
+        # 编译源代码为代码对象
+        code_object = compile(source_code, source_path, 'exec')
 
         # 如果未指定输出路径，生成默认输出路径
         if output_path is None:
             source_dir = os.path.dirname(source_path)
             source_name = os.path.basename(source_path)
             module_name = os.path.splitext(source_name)[0]
-            output_path = os.path.join(source_dir, f"{module_name}.pyz")
+            output_path = os.path.join(source_dir, f"{module_name}.pyc")
 
-        # 检查源目录是否有 __main__.py
-        has_main_py = os.path.exists(os.path.join(temp_dir, '__main__.py'))
-        main_entry = f"{os.path.splitext(main_file_name)[0]}:main" if not has_main_py and hasattr(sys.modules['__main__'], 'main') else None
-
-        # 使用zipapp打包临时目录
-        zipapp.create_archive(temp_dir, output_path, main=main_entry)
-
-        # 清理临时目录
-        import shutil
-        shutil.rmtree(temp_dir)
+        # 写入pyc文件
+        self._write_pyc_file(output_path, code_object)
 
         return output_path
 
@@ -73,9 +52,6 @@ class PyCompiler:
 
     def _write_pyc_file(self, output_path: str, code_object) -> None:
         """写入pyc文件，包含正确的文件头"""
-        import time
-        import struct
-
         # 获取Python版本魔数
         magic = importlib.util.MAGIC_NUMBER
 
@@ -101,6 +77,6 @@ class PyCompiler:
             # 写入编译后的代码对象
             marshal.dump(code_object, f)
 
-    def get_imported_modules(self) -> Set[str]:
+    def get_imported_modules(self) -> set:
         """获取分析到的导入模块"""
         return self.imported_modules

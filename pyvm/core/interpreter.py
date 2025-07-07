@@ -1,15 +1,8 @@
-import marshal
-import sys
 import os
+import sys
+import marshal
 import types
-import time
-from io import StringIO
-import contextlib
-from pathlib import Path
-import importlib.util
-
-sys.path.append(str(Path(__file__).resolve().parent.parent))
-
+import zipapp
 
 class PyInterpreter:
     def __init__(self, module_paths=None):
@@ -101,3 +94,16 @@ class PyInterpreter:
             return self.globals.get('__result__', None)
         except Exception as e:
             raise RuntimeError(f"执行pyc文件失败: {str(e)}") from e
+
+    def execute_pyz(self, pyz_path):
+        """执行.pyz文件并返回结果"""
+        if not os.path.exists(pyz_path):
+            raise FileNotFoundError(f".pyz文件不存在: {pyz_path}")
+
+        try:
+            # 执行.pyz文件
+            sys.argv = [pyz_path]
+            zipapp.main(args=[pyz_path])
+            return self.globals.get('__result__', None)
+        except Exception as e:
+            raise RuntimeError(f"执行.pyz文件失败: {str(e)}") from e
