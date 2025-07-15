@@ -3,6 +3,7 @@ import sys
 import marshal
 import types
 import zipapp
+import pyvm.core.railgun
 
 class PyInterpreter:
     def __init__(self, module_paths=None):
@@ -103,7 +104,6 @@ class PyInterpreter:
         try:
             # 执行.pyz文件
             sys.argv = [pyz_path]
-            zipapp.main(args=[pyz_path])
-            return self.globals.get('__result__', None)
+
         except Exception as e:
             raise RuntimeError(f"执行.pyz文件失败: {str(e)}") from e
